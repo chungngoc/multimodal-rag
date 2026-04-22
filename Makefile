@@ -5,6 +5,28 @@
         qdrant-up qdrant-down ollama-pull ollama-up \
         docker-build docker-up docker-down run
 
+# Configuration
+PYTHON := python
+VENV := venv
+VENV_BIN := $(VENV)/bin
+
+# Auto-detect: use venv if it exists, otherwise use system Python
+# This makes Makefile work both locally (with venv) and in CI (without venv)
+ifeq ($(wildcard $(VENV_BIN)/pip),)
+    # venv doesn't exist — use system binaries (CI environment)
+    PIP     := pip
+    PYTEST  := pytest
+    RUFF    := ruff
+	BLACK   := black
+else
+    # venv exists — use venv binaries (local environment)
+    PIP     := $(VENV_BIN)/pip
+    PYTEST  := $(VENV_BIN)/pytest
+    RUFF    := $(VENV_BIN)/ruff
+	BLACK   := $(VENV_BIN)/black
+
+endif
+
 # Default target: show help
 help:
 	@echo "Available commands:"
@@ -39,27 +61,31 @@ help:
 
 # Setup
 install:
-	pip install -r requirements.txt
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+	$(PIP) install -e .
 
 install-dev:
-	pip install -r requirements-dev.txt
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements-dev.txt
+	$(PIP) install -e .
 	pre-commit install
 	@echo " Dev environment setup complete! "
 
 # Code quality
 lint:
-	ruff check .
+	$(RUFF) check .
 
 format:
-	black .
-	ruff check . --fix
+	$(BLACK) .
+	$(RUFF) check . --fix
 
 # Tests
 test:
-	pytest tests/ -v
+	$(PYTEST) tests/ -v
 
 test-cov:
-	pytest tests/ -v --cov=app --cov-report=term-missing --cov-report=html
+	$(PYTEST) tests/ -v --cov=app --cov-report=term-missing --cov-report=html
 	@echo "HTML coverage report generated at htmlcov/index.html"
 
 # Local services
